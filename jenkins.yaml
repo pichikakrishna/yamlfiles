@@ -7,51 +7,31 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jenkins-server
+      app: jenkins
   template:
     metadata:
       labels:
-        app: jenkins-server
+        app: jenkins
     spec:
-      securityContext:
-            fsGroup: 1000
-            runAsUser: 1000
-      serviceAccountName: admin
+      initContainers:
+        - name: init-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /var/jenkins_home && chmod -R 775 /var/jenkins_home"]
+          volumeMounts:
+            - name: jenkins-storage
+              mountPath: /var/jenkins_home
       containers:
         - name: jenkins
           image: jenkins/jenkins:lts
-          resources:
-            limits:
-              memory: "2Gi"
-              cpu: "1000m"
-            requests:
-              memory: "500Mi"
-              cpu: "500m"
           ports:
-            - name: httpport
-              containerPort: 8080
-            - name: jnlpport
-              containerPort: 50000
-          livenessProbe:
-            httpGet:
-              path: "/login"
-              port: 8080
-            initialDelaySeconds: 90
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 5
-          readinessProbe:
-            httpGet:
-              path: "/login"
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            - containerPort: 8080
           volumeMounts:
-            - name: jenkins-data
+            - name: jenkins-storage
               mountPath: /var/jenkins_home
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
       volumes:
-        - name: jenkins-data
+        - name: jenkins-storage
           persistentVolumeClaim:
-              claimName: jenkins-pvc
+            claimName: jenkins-pvc
