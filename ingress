@@ -70,3 +70,90 @@ aws iam create-policy-version \
     --policy-arn arn:aws:iam::<your-aws-account-id>:policy/AWSLoadBalancerControllerIAMPolicy \
     --policy-document file://policy.json \
     --set-as-default
+
+
+
+
+
+
+perfect example for ingress
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: httpd:latest  # Official Apache HTTP Server image
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html-volume
+          mountPath: /usr/local/apache2/htdocs
+      volumes:
+      - name: html-volume
+        configMap:
+          name: hello-world-html
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-html
+data:
+  index.html: |
+    <html>
+    <head><title>Hello World</title></head>
+    <body>
+    <h1>Hello, Dear Vaishnavi I love You</h1>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-service
+spec:
+  selector:
+    app: hello-world
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP  # Changed from LoadBalancer to ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-world-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing  # Use "internal" for private ALB
+    alb.ingress.kubernetes.io/target-type: ip  # Ensures targets are pods (IP mode)
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+    alb.ingress.kubernetes.io/healthcheck-path: "/"
+    alb.ingress.kubernetes.io/healthcheck-port: "80"
+    alb.ingress.kubernetes.io/success-codes: "200"
+spec:
+  ingressClassName: alb  # Specifies ALB should handle this Ingress
+  rules:
+  - host: hello-world.example.com  # Replace with your actual domain or ALB DNS
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-world-service
+            port:
+              number: 80
