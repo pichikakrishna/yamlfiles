@@ -141,3 +141,58 @@ type: kubernetes.io/service-account-token
 
 kubectl create clusterrolebinding jenkins-binding --clusterrole=cluster-admin --serviceaccount=jenkins:jenkins
 kubectl get secret jenkins-sa-token -n jenkins -o jsonpath='{.data.token}' | base64 --decode
+
+
+
+
+
+
+
+test yaml file 
+
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: jenkins
+  labels:
+    jenkins: agent
+spec:
+  serviceAccountName: jenkins-sa
+  containers:
+  - name: shell
+    image: ubuntu
+    command:
+    - sleep
+    args:
+    - infinity
+    securityContext:
+      runAsUser: 1000
+  - name: kubectl
+    image: bitnami/kubectl
+    command:
+    - sleep
+    args:
+    - infinity
+    securityContext:
+      runAsUser: 1000
+'''
+            defaultContainer 'shell'
+            retries 2
+        }
+    }
+    stages {
+        stage('Get Node Information') {
+            steps {
+                container('kubectl') {
+                    sh 'kubectl get pods -n jenkins'
+                }
+            }
+        }
+    }
+}
+
