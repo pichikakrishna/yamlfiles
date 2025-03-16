@@ -196,3 +196,8 @@ spec:
     }
 }
 
+
+
+
+http://jenkins.jenkins.svc.cluster.local:8080
+ in node configuration jenkins url above need to provide
